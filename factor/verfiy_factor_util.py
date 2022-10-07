@@ -4,7 +4,7 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 import datetime
-import pub_util_a
+import pub_uti_a
 
 class market:
     def __init__(self,trade_date,stock_id,stock_name,open_price,close_price,high_price,low_price,increase):
