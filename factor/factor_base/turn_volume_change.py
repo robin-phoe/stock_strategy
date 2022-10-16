@@ -1,7 +1,10 @@
 #换手沉积一段时间（x日内总体换手值小于n）后，突然放量（换手值大于N）的情况【低换手持续时长；低换手阈值；高换手阈值；距离低谷时长；当前异动值】
 import datetime
 import os
+import re
 
+import mplfinance as mpf
+import numpy
 import pandas as pd
 
 import pub_uti_a
@@ -28,21 +31,23 @@ class turn_volume_change_factor:
         self.df = single_df
         self.low_sec_list = []
         self.high_sec_list = []
+        self.stock_code = self.df['stock_id'].iloc[0]
+        self.stock_name = re.sub('\*', '', self.df['stock_name'].iloc[0])
+        print('single_df1:', self.df, self.stock_name)
+
     def save(self):
         pass
     def deal_data(self):
         #计算换手三日均值
         self.df['turn_volume_mean_3'] = self.df['turnover_rate'].rolling(3).mean()
-        self.df['turn_flag'] = 0
+        self.df['turn_flag_l'] = numpy.nan
+        self.df['turn_flag_h'] = numpy.nan
     def core(self):
         low_sec = sections()
         high_sec = sections()
-
-
         for ind,row in self.df.iterrows():
             #判断低谷
             if row['turn_volume_mean_3'] < global_param.low_turn_value:
-                row['turn_flag'] = 1
                 #判断section是否存在
                 if low_sec.star_index is None:
                     low_sec.star_index = ind
@@ -58,7 +63,6 @@ class turn_volume_change_factor:
                     low_sec = sections()
             #判断高点
             if row['turnover_rate'] > global_param.high_turn_value:
-                row['turn_flag'] = 2
                 #判断section是否存在
                 if high_sec.star_index is None:
                     high_sec.star_index = ind
@@ -79,10 +83,30 @@ class turn_volume_change_factor:
                     high_sec.end_date = row['trade_date']
                     self.high_sec_list.append(high_sec)
                     print('high_sec.start_date1:',high_sec.start_date,'high_sec.end_date:',high_sec.end_date)
-
+    def mark_target(self):
+        #标记低谷
+        for low_sec in self.low_sec_list:
+            self.df.loc[low_sec.star_index:low_sec.end_index,'turn_flag_l'] = 1
+        #标记高点
+        for high_sec in self.high_sec_list:
+            self.df.loc[high_sec.star_index:high_sec.end_index,'turn_flag_h'] = 2
     def run(self):
         self.deal_data()
         self.core()
+        self.mark_target()
+        ###########待提出，抽象优化
+        print('single_df:',self.df,self.stock_name)
+        # self.df.to_csv('../factor_verify_res/换手率因子/test.csv')
+        self.df.set_index('Date',inplace=True,drop=True)
+        if not (len(self.low_sec_list) and len(self.high_sec_list)):
+            return
+        add_plot = [mpf.make_addplot(self.df[['turn_flag_l','turn_flag_h']])]
+        save_path= '{}{}{}.png'.format(conf_param.pic_path,self.stock_code,self.stock_name)
+        title = '{}{}'.format(self.stock_code,self.stock_name)
+        s = mpf.make_mpf_style(rc={'font.family': 'SimHei'})
+        mpf.plot(self.df, type='candle', style=s, volume=True, mav=(3, 6, 9), title=title,
+                 addplot=add_plot,savefig=save_path)
+        self.df.reset_index(inplace=True)
 '''
 def core(self):
     self.info = 'N'
@@ -129,6 +153,8 @@ class conf_param:
     end_date = '2022-12-31'
     #基础路径
     base_path = 'E:/Code/stock_strategy/factor/factor_verify_res/换手率因子/'
+    #pic 文件夹
+    pic_path = base_path + 'pic/'
     #结果文件名
     res_file_name = 'result.csv'
 #写一个函数，判断基础路径是否存在
@@ -141,18 +167,25 @@ def save_result(list_data):
 def main(test = False):
     #创建文件夹
     check_path(conf_param.base_path)
-    sql = "SELECT trade_code,stock_id,stock_name,trade_date,turnover_rate  " \
+    check_path(conf_param.pic_path)
+    sql = "SELECT trade_date as Date,open_price as Open,high_price as High,low_price as Low,close_price as Close,turnover_rate as Volume" \
+          ",stock_id,stock_name,trade_date,turnover_rate  " \
           "FROM stock_trade_data " \
-          " WHERE trade_date >= '{start_date}' AND trade_date <= '{end_date}' ".format(
+          " WHERE trade_date >= '{start_date}' AND trade_date <= '{end_date}'".format(
         start_date=conf_param.start_date, end_date=conf_param.end_date)
 
     #test
     if test:
-        sql = "SELECT trade_code,stock_id,stock_name,trade_date,turnover_rate  " \
+        sql = "SELECT trade_date as Date,open_price as Open,high_price as High,low_price as Low,close_price as Close,turnover_rate as Volume" \
+              ",stock_id,stock_name,trade_date,turnover_rate  " \
               "FROM stock_trade_data " \
               " WHERE trade_date >= '{start_date}' AND trade_date <= '{end_date}' AND stock_id='002553'".format(start_date = conf_param.start_date, end_date = conf_param.end_date)
         print('sql:',sql)
     df = pub_uti_a.creat_df(sql, ascending=True)
+    #过滤科创板
+    df = df[~df['stock_id'].str.startswith(('688','300'))]
+    df.reset_index(drop=True, inplace=True)
+
     id_set = set(df['stock_id'].to_list())
     count = 1
     result_list = []
@@ -181,7 +214,8 @@ def main(test = False):
         result_dict['low_sec_list'] = str(low_sec_list)
         result_dict['high_sec_list'] = str(high_sec_list)
         result_list.append(result_dict)
-    save_result(result_list)
+    if not test:
+        save_result(result_list)
 
 if __name__ == '__main__':
     start = datetime.datetime.now()
