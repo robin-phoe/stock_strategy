@@ -1,6 +1,10 @@
 ###验证因子的基础函数
+import re
+# import mplfinance #https://blog.csdn.net/wuwei_201/article/details/105815728
 import mpl_finance
 import matplotlib
+import pandas as pd
+
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 import datetime
@@ -112,7 +116,7 @@ class plot_bar:
             self.return_df = pd.read_csv(self.return_file_dir)
     def create_tradedate_list(self):
         sql = "select distinct trade_date from {0} where trade_date >= '{1}' and trade_date <= '{2}'".format(
-            base_config.source_table,self.start_date,self.end_date
+            'stock_trade_data',self.start_date,self.end_date
         )
         trade_data_df = pub_uti_a.creat_df(sql,ascending=True)
         self.trade_date_list = trade_data_df['trade_date'].to_list()
@@ -144,8 +148,7 @@ class plot_bar:
             if m_e_index > date_len:
                 m_e_index = date_len
             pic_date_list = self.trade_date_list[m_s_index:m_e_index]
-            t_s_index = pic_date_list.index(row['start_date'])
-            t_e_index = pic_date_list.index(row['end_date'])
+            section_tup_list = []
             market_res = []
             count = 0
             for date in pic_date_list:
@@ -154,11 +157,11 @@ class plot_bar:
                     market_res.append([count,market.open_price,market.close_price,market.high_price,market.low_price])
                     count += 1
             try:
-                self.draw_k_line(chart_title,market_res,t_s_index,t_e_index)
+                self.draw_k_line(chart_title,market_res,section_tup_list)
             except Exception as err:
                 print(stock_name,err)
 
-    def draw_k_line(self,chart_title,data,t_s_index,t_e_index):
+    def draw_k_line(self,chart_title,data,section_tup_list):
 
         plt.rcParams['font.sans-serif'] = ['KaiTi']
         plt.rcParams['axes.unicode_minus'] = False
@@ -173,10 +176,11 @@ class plot_bar:
             colorup='r',
             colordown='g',
             alpha=0.7)
-        plt.axvline(t_s_index, c='red')
-        plt.axvline(t_e_index, c='red')
+        for section_tup in section_tup_list:
+            plt.axvline(section_tup[0], c='red')
+            plt.axvline(section_tup[1], c='red')
         plt.legend();
-        # plt.show()
+        plt.show()
         image_path = 'E:\\Code\\stock_strategy\\factor\\factor_verify_res\\换手率因子\\pic\\{}.jpg'.format(chart_title)
         plt.savefig(image_path)
         plt.close('all')
