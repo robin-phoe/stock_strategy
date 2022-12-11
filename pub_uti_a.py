@@ -156,3 +156,17 @@ class df_to_db:
         df.to_sql(name=table,con=self.engine,if_exists='append')
 dd = df_to_db()
 df_to_mysql = dd.df_to_mysql
+
+"""
+【功能】验证文件夹是否存在，不存在则创建
+"""
+def verify_folder_exist(dir):
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+        print('创建文件夹：', dir)
+        logging.info('创建文件夹：{}'.format(dir))
+    else:
+        print('文件夹已存在：', dir)
+        logging.info('文件夹已存在：{}'.format(dir))
+
+

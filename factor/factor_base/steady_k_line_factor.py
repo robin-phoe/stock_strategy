@@ -23,6 +23,8 @@ class before_section:
         increase_abs_mean = self.single_df['increase_abs'].mean()
         if increase_abs_mean <= self.reach_rate:
             return {'reach':True,'steady_rate_abs':increase_abs_mean}
+        else:
+            return {'reach':False,'steady_rate_abs':increase_abs_mean}
 
 
 if __name__ == '__main__':

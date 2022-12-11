@@ -1,7 +1,11 @@
 #平稳k 线后 上影线，双因子联合测试
 
 #打印当前路径
+import datetime
 import sys
+
+import pandas as pd
+
 sys.path.append('E:\\Code\\stock_strategy\\factor\\')
 print(sys.path)
 import pub_uti_a
@@ -10,9 +14,11 @@ from factor.factor_base import shangyingxian_factor,steady_k_line_factor
 class shangyingxian_steady_double_factors:
     def __init__(self):
         self.df = None
-        self.start_date = '2022-01-01'
-        self.end_date = '2022-12-31'
+        self.res_df = None
+        self.start_date = '2022-10-01'
+        self.end_date = '2022-10-25'
         self.steady_long_param = 10
+        self.res_dir = 'E:\\Code\\stock_strategy\\factor\\factor_verify_res\\上影线_k线平稳双因子\\'
     def select_market(self):
         sql = "select trade_code,trade_date,stock_id,stock_name,open_price,close_price,high_price,low_price,increase " \
                 " from {0} " \
@@ -23,6 +29,8 @@ class shangyingxian_steady_double_factors:
     def core(self):
         #股票列表
         stock_set = set(self.df['stock_id'].to_list())
+        #结果列表
+        res_list = []
         #遍历所有股票
         count = 0
         for stock_id in stock_set:
@@ -41,10 +49,21 @@ class shangyingxian_steady_double_factors:
                         start_index = 0
                     end_index = index
                     #判断是否符合平稳k线因子
-                    if steady_k_line_factor.before_section(single_df,start_index,end_index).core():
+                    res = steady_k_line_factor.before_section(single_df,start_index,end_index).core()
+                    if res['reach']:
                         count += 1
                         print('符合双因子：',count,market_obj.stock_id,market_obj.trade_date)
-
+                        res_list.append({'stock_id':market_obj.stock_id,'stock_name':market_obj.stock_name,'trade_date':market_obj.trade_date})
+        #结果写入df
+        self.res_df = pd.DataFrame(res_list)
+        #存储结果
+        self.save_df_to_csv()
+    #存储df结果到csv
+    def save_df_to_csv(self):
+        #验证文件夹是否存在
+        pub_uti_a.verify_folder_exist(self.res_dir)
+        # print('{}shangyingxian_steady_factors_{}.csv'.format(self.res_dir,datetime.datetime.now().strftime('%m%d%H%M%S')))
+        self.res_df.to_csv('{}shangyingxian_steady_factors_{}.csv'.format(self.res_dir,datetime.datetime.now().strftime('%m%d%H%M%S')),index=False)
 
 
 if __name__ == '__main__':
