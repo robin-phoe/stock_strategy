@@ -30,8 +30,10 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 
 class base_conf:
-    result_csv = "../factor_verify_res/single_limit_factors_12-17/compute_single_limitup_factors_12_17.csv"
-    source_table = "stock_trade_data1217"#"stock_trade_data"
+    work_dir = "../factor_verify_res/single_limit_factors_230115/"
+    result_csv = "compute_single_limitup_factors.csv"
+    result_path = work_dir + result_csv
+    source_table = "stock_trade_data"#"stock_trade_data1217"#
 def create_df():
     res_df = pd.DataFrame(columns=('name','id','日期','benchmark','前斜率','后斜率','15日换手率','当前价/125日换手率比值','涨停次日开盘价/涨停价',
     '涨停次日收盘价/涨停价','涨停次日最高价/涨停价','涨停前波动绝对值','涨停后波动绝对值','单双涨停标志','最后日企稳情况'))
@@ -162,7 +164,7 @@ class stock_buffer:
             self.init_stock(id)
             count += 1
             print('count:',count,id)
-        self.res_df.to_csv(base_conf.result_csv)
+        self.res_df.to_csv(base_conf.result_path)
     def creat_time(self):
         sql = "select distinct trade_date as trade_date from {2} " \
               " where trade_date >= '{0}' and trade_date <= '{1}' ".format(self.start_date,self.end_date,base_conf.source_table)
@@ -173,7 +175,7 @@ class stock_buffer:
                     " FROM {2} " \
                     "where trade_date >= '{0}' and trade_date <= '{1}' " \
                     "AND stock_name NOT LIKE 'ST%' AND stock_name NOT LIKE '%ST%' " \
-                    "AND stock_id NOT like '300%' AND  stock_id NOT like '688%' " \
+                    "AND stock_id NOT like '30%' AND  stock_id NOT like '688%' " \
                     " ".format(self.start_date,self.end_date,base_conf.source_table)
         print('trade_sql:{}'.format(trade_sql))
         self.trade_df = pub_uti_a.creat_df(sql=trade_sql)
@@ -201,7 +203,7 @@ class stock_buffer:
 
 
 if __name__ == '__main__':
-    st_buff = stock_buffer(start_date= '2012-01-01', end_date= '2018-01-01')
+    st_buff = stock_buffer(start_date= '2022-01-01', end_date= '2023-01-01')
     st_buff.init_buffer()
     # history(start_date= '2022-02-16', end_date= '2022-04-14')
     print('completed.')
